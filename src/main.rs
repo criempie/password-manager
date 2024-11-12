@@ -1,7 +1,9 @@
+use std::{
+    fs::{self},
+    io::{self},
+};
+
 mod password_generator;
+mod vault;
 
-fn main() {
-    let a = password_generator::generate(24);
-
-    println!("{}", a);
-}
+fn main() {}
