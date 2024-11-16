@@ -6,6 +6,8 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
+pub mod database;
+
 const DB_FILE_PATH: &str = "./db.json";
 
 pub struct Vault {
@@ -14,7 +16,7 @@ pub struct Vault {
     _increment: u16,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct VaultEntry {
     id: u16,
     login: String,
