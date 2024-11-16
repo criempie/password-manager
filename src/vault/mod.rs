@@ -1,73 +1,64 @@
-use std::{
-    collections::HashMap,
-    fs::{self},
-    io::{Read, Seek, SeekFrom, Write},
-};
-
 use serde::{Deserialize, Serialize};
+use std::io::{self};
 
-pub mod database;
-
-const DB_FILE_PATH: &str = "./db.json";
-
-pub struct Vault {
-    _file: fs::File,
-    _entries: HashMap<u16, VaultEntry>,
-    _increment: u16,
-}
+mod database;
+use database::Database;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct VaultEntry {
-    id: u16,
+    id: u128,
     login: String,
     password: String,
 }
 
-impl Vault {
-    pub fn open() -> Vault {
-        let file = fs::OpenOptions::new()
-            .read(true)
-            .create(true)
-            .write(true)
-            .open(DB_FILE_PATH)
-            .unwrap();
-
-        return Vault {
-            _file: file,
-            _entries: HashMap::new(),
-            _increment: 1,
-        };
-    }
+pub struct Vault {
+    db: Database<Vec<VaultEntry>>,
+    entries: Vec<VaultEntry>,
 }
 
 impl Vault {
-    pub fn load_from_file(&mut self) {
-        let mut content = String::new();
-
-        self._file.seek(SeekFrom::Start(0)).unwrap();
-        self._file.read_to_string(&mut content).unwrap();
-
-        self._entries = serde_json::from_str(&content).unwrap();
-    }
-
-    pub fn save_to_file(&mut self) {
-        let serialized = serde_json::to_string_pretty(&self._entries).unwrap();
-        self._file.seek(SeekFrom::Start(0)).unwrap();
-        self._file.write_all(&serialized.as_bytes()).unwrap();
-    }
-
-    pub fn entry_create(&mut self, login: String, password: String) -> VaultEntry {
-        let id = self._increment;
-        self._increment += 1;
-
-        return VaultEntry {
-            id,
-            login,
-            password,
+    pub fn new() -> Vault {
+        return Vault {
+            db: Database::new(),
+            entries: Vec::new(),
         };
     }
 
-    pub fn entry_save(&mut self, entry: VaultEntry) {
-        self._entries.insert(entry.id, entry);
+    pub fn entry_create(&mut self, login: String, password: String) {
+        let entry = VaultEntry {
+            id: self.db.password_next(),
+            login,
+            password,
+        };
+
+        self.entries.push(entry);
+    }
+
+    pub fn entries_get(&self) -> &Vec<VaultEntry> {
+        return &self.entries;
+    }
+
+    pub fn load_from_db(&mut self) -> Result<(), io::Error> {
+        match self.db.load_from() {
+            Ok(entries) => self.entries = entries,
+            Err(error) => match error.kind() {
+                io::ErrorKind::NotFound => {
+                    self.db.open()?;
+                    self.load_from_db()?;
+                },
+                _ => {
+                    return Err(error);
+                }
+            }
+        }
+
+
+        return Ok(());
+    }
+
+    pub fn save_to_db(&mut self) -> Result<(), io::Error> {
+        self.db.load_to(&self.entries)?;
+
+        return Ok(());
     }
 }

@@ -1,24 +1,27 @@
 use std::{
     fs::{self},
     io::{self},
+    time::{self, Instant, SystemTime},
 };
 
 mod password_generator;
 mod vault;
 
-use vault::database;
+use vault::Vault;
 
 fn main() {
-    let mut vault = vault::Vault::open();
-    let mut database = database::Database::new();
+    let mut vault = Vault::new();
 
-    database.open().unwrap();
+    if let Err(e) = vault.load_from_db() {
+        eprintln!("Error: {}", e);
+        return;
+    }
 
-    let entry = vault.entry_create(String::from("hello"), String::from("world!!!"));
-    let entry2 = vault.entry_create(String::from("hello2"), String::from("123123123!!!"));
+    println!("{:?}", vault.entries_get());
 
-    database.load(&vec![entry, entry2]).unwrap();
-    let unloaded = database.unload().unwrap();
+    vault.entry_create(String::from("new login!"), String::from("passworkj2b34k"));
 
-    println!("{:?}", unloaded);
+    println!("{:?}", vault.entries_get());
+
+    vault.save_to_db();
 }

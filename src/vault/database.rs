@@ -1,30 +1,28 @@
-use serde::{
-    de::{self, DeserializeOwned},
-    Deserialize, Serialize,
-};
+use serde::{self};
 use std::{
     fs,
-    io::{self, ErrorKind, Read, Seek, Write},
-    marker::PhantomData,
+    io::{self, Read, Seek, Write},
+    marker::{self},
+    time,
 };
 
 const DB_FILE_PATH: &str = "./db.json";
 
-pub struct Database<T: Serialize + de::DeserializeOwned> {
+pub struct Database<T: serde::Serialize + serde::de::DeserializeOwned> {
     _file: Option<fs::File>,
-    __data: PhantomData<T>,
+    __marker: marker::PhantomData<T>,
 }
 
-impl<T: Serialize + de::DeserializeOwned> Database<T> {
+impl<T: serde::Serialize + serde::de::DeserializeOwned> Database<T> {
     pub fn new() -> Database<T> {
         return Database {
             _file: None,
-            __data: PhantomData {},
+            __marker: marker::PhantomData {},
         };
     }
 }
 
-impl<T: Serialize + de::DeserializeOwned> Database<T> {
+impl<T: serde::Serialize + serde::de::DeserializeOwned> Database<T> {
     pub fn open(&mut self) -> Result<(), io::Error> {
         if let None = self._file {
             let file = fs::OpenOptions::new()
@@ -50,7 +48,7 @@ impl<T: Serialize + de::DeserializeOwned> Database<T> {
         }
     }
 
-    pub fn unload(&mut self) -> Result<T, io::Error> {
+    pub fn load_from(&mut self) -> Result<T, io::Error> {
         match &mut self._file {
             Some(file) => {
                 let mut buffer = String::new();
@@ -66,7 +64,7 @@ impl<T: Serialize + de::DeserializeOwned> Database<T> {
         }
     }
 
-    pub fn load(&mut self, data: &T) -> Result<(), io::Error> {
+    pub fn load_to(&mut self, data: &T) -> Result<(), io::Error> {
         match &mut self._file {
             Some(file) => {
                 let serialized = serde_json::to_string_pretty(data)?;
@@ -79,5 +77,12 @@ impl<T: Serialize + de::DeserializeOwned> Database<T> {
             }
             None => Err(io::Error::new(io::ErrorKind::NotFound, "File not opened.")),
         }
+    }
+
+    pub fn password_next(&self) -> u128 {
+        return time::SystemTime::now()
+            .duration_since(time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
     }
 }
