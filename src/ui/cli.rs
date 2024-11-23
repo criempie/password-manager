@@ -1,6 +1,6 @@
 use std::io::{self, stdin, stdout, Write};
 
-use crate::vault::{Vault, VaultEntry};
+use crate::vault::{entries::ClassicEntry, Vault};
 
 enum Command {
     ShowAllEntries,
@@ -21,7 +21,7 @@ impl CLI {
     }
 
     pub fn start(&mut self) {
-        self.vault.load_from_db().unwrap();
+        self.vault.unlock();
 
         // if let Ok(master_key) = self.prompt_master_key() {
         //     self.master_key = Some(master_key);
@@ -36,9 +36,6 @@ impl CLI {
                     let entry = self.prompt_new_entry().unwrap();
 
                     println!("Created new entry: {:?}", &entry);
-
-                    self.vault.entry_save(entry);
-                    self.vault.save_to_db().unwrap();
                 }
             },
             Err(err) => panic!("{}", err),
@@ -58,6 +55,8 @@ impl CLI {
     fn prompt_action(&mut self) -> Result<Command, io::Error> {
         let mut buffer = String::new();
 
+        stdout().flush()?;
+
         println!("Select action:");
         println!("1. Show all entries");
         println!("2. Create new entry");
@@ -74,14 +73,17 @@ impl CLI {
         return self.prompt_action();
     }
 
-    fn prompt_new_entry(&mut self) -> Result<VaultEntry, io::Error> {
+    // TODO: Return reference to entry after vault.entry_create todo is done.
+    fn prompt_new_entry(&mut self) -> Result<ClassicEntry, io::Error> {
         let mut login_buf = String::new();
         let mut password_buf = String::new();
 
-        println!("Enter login: ");
+        print!("Enter login: ");
+        stdout().flush()?;
         stdin().read_line(&mut login_buf)?;
 
-        println!("Enter password: ");
+        print!("Enter password: ");
+        stdout().flush()?;
         stdin().read_line(&mut password_buf)?;
 
         return Ok(self
