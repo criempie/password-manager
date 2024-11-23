@@ -24,13 +24,17 @@ impl Vault {
         };
     }
 
-    pub fn entry_create(&mut self, login: String, password: String) {
+    pub fn entry_create(&self, login: &str, password: &str) -> VaultEntry {
         let entry = VaultEntry {
             id: self.db.password_next(),
-            login,
-            password,
+            login: String::from(login),
+            password: String::from(password),
         };
 
+        return entry;
+    }
+
+    pub fn entry_save(&mut self, entry: VaultEntry) {
         self.entries.push(entry);
     }
 
@@ -45,13 +49,12 @@ impl Vault {
                 io::ErrorKind::NotFound => {
                     self.db.open()?;
                     self.load_from_db()?;
-                },
+                }
                 _ => {
                     return Err(error);
                 }
-            }
+            },
         }
-
 
         return Ok(());
     }
