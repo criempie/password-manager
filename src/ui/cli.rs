@@ -23,10 +23,6 @@ impl CLI {
     pub fn start(&mut self) {
         self.vault.unlock();
 
-        // if let Ok(master_key) = self.prompt_master_key() {
-        //     self.master_key = Some(master_key);
-        // }
-
         match self.prompt_action() {
             Ok(command) => match command {
                 Command::ShowAllEntries => {
@@ -40,16 +36,6 @@ impl CLI {
             },
             Err(err) => panic!("{}", err),
         }
-    }
-
-    fn prompt_master_key(&mut self) -> Result<String, io::Error> {
-        let mut buffer = String::new();
-
-        print!("Enter master key: ");
-        stdout().flush()?;
-        stdin().read_line(&mut buffer)?;
-
-        return Ok(buffer);
     }
 
     fn prompt_action(&mut self) -> Result<Command, io::Error> {
