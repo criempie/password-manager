@@ -1,20 +1,30 @@
+pub mod database;
+pub mod error;
 mod vault;
+
+use database::Database;
 use vault::{PasswordEntry, Vault_reborn};
 
 fn main() {
-    // let mut ui = CLI::new(Vault::new());
+    // let mut vault = Vault_reborn::new();
+    // let entry = PasswordEntry::new(
+    //     Vault_reborn::generate_id(),
+    //     String::from("Hello world"),
+    //     String::from("12345sdfkj234"),
+    // );
 
-    // ui.start();
+    // vault.add_entry(entry);
 
-    let mut vault = Vault_reborn::new();
-    let entry = PasswordEntry::new(
-        Vault_reborn::generate_id(),
-        String::from("Hello world"),
-        String::from("12345sdfkj234"),
-    );
+    let mut db = Database::new();
 
-    let id = entry.id.clone();
-    vault.add_entry(entry);
+    if let Err(e) = db.open() {
+        println!("{}", e);
+    }
 
-    println!("{:?}", vault.get_entry(id));
+    let entries = match db.get_entries() {
+        Ok(entries) => entries,
+        Err(e) => panic!("{}", e),
+    };
+
+    println!("Entries: {:?}", entries);
 }

@@ -1,6 +1,7 @@
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PasswordEntry {
     pub id: String,
     pub login: String,
