@@ -1,43 +1,47 @@
+pub mod database;
+pub mod entry;
+
+use database::Database;
+use entry::Entry;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct PasswordEntry {
-    pub id: String,
-    pub login: String,
-    password: String,
-}
+pub struct VaultSettings {}
 
-impl PasswordEntry {
-    pub fn new(id: String, login: String, password: String) -> PasswordEntry {
-        Self {
-            id,
-            login,
-            password,
-        }
+impl VaultSettings {
+    pub fn new() -> Self {
+        Self {}
     }
 }
 
-pub struct Vault_reborn {
-    entries: Vec<PasswordEntry>,
+pub struct Vault {
+    pub entries: Vec<Entry>,
+    pub settings: VaultSettings,
+    db: Database,
 }
 
-impl Vault_reborn {
-    pub fn new() -> Vault_reborn {
+impl Vault {
+    pub fn new() -> Vault {
         Self {
             entries: Vec::new(),
+            settings: VaultSettings::new(),
+            db: Database::new(),
         }
     }
 
-    pub fn generate_id() -> String {
-        return Uuid::new_v4().as_simple().to_string();
-    }
+    pub fn init(&mut self) {
+        if let Err(e) = self.db.open() {
+            panic!("db opening: {}", e);
+        }
 
-    pub fn add_entry(&mut self, entry: PasswordEntry) {
-        self.entries.push(entry);
-    }
+        let db_format = match self.db.unload() {
+            Ok(data) => data,
+            Err(e) => {
+                panic!("db unloading: {}", e);
+            }
+        };
 
-    pub fn get_entry(&self, id: String) -> Option<PasswordEntry> {
-        return self.entries.iter().find(|&entry| entry.id == id).cloned();
+        self.entries = db_format.entries;
+        self.settings = db_format.settings;
     }
 }
