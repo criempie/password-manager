@@ -1,9 +1,11 @@
 pub mod database;
 pub mod entry;
 
-use database::Database;
+use crate::error::DatabaseError;
+use database::{Database, DatabaseFormat};
 use entry::Entry;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct VaultSettings {}
@@ -29,19 +31,38 @@ impl Vault {
         }
     }
 
-    pub fn init(&mut self) {
-        if let Err(e) = self.db.open() {
-            panic!("db opening: {}", e);
-        }
+    pub fn generate_id() -> String {
+        return Uuid::new_v4().as_simple().to_string();
+    }
 
-        let db_format = match self.db.unload() {
-            Ok(data) => data,
-            Err(e) => {
-                panic!("db unloading: {}", e);
-            }
+    pub fn init(&mut self) {
+        let data = match self.db.unload() {
+            Ok(data) => Ok(data),
+            Err(e) => match e {
+                DatabaseError::FileNotFound() => self.db.init_file(),
+                _ => panic!("{}", e.to_string()),
+            },
+        }
+        .unwrap();
+
+        self.entries = data.entries;
+        self.settings = data.settings;
+    }
+
+    pub fn create_entry(&mut self, login: String, password: String) {
+        let id = Vault::generate_id();
+
+        self.entries.push(Entry::new(id, login, password));
+    }
+
+    pub fn save(&mut self) -> Result<(), DatabaseError> {
+        let format = DatabaseFormat {
+            entries: self.entries.clone(),
+            settings: self.settings.clone(),
         };
 
-        self.entries = db_format.entries;
-        self.settings = db_format.settings;
+        self.db.load(&format)?;
+
+        return Ok(());
     }
 }

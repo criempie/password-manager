@@ -9,4 +9,7 @@ fn main() {
 
     println!("{:?}", vault.entries);
     println!("{:?}", vault.settings);
+
+    vault.create_entry("hello world".to_string(), "qwerty12345".to_string());
+    let _ = vault.save();
 }

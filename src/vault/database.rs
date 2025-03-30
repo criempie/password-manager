@@ -1,11 +1,10 @@
 use serde::{self, Deserialize, Serialize};
 use std::{
     fs,
-    io::{self, Read},
+    io::{self, Read, Write},
 };
-use uuid::Uuid;
 
-use crate::{error::Error, vault::entry::Entry};
+use crate::{error::DatabaseError, vault::entry::Entry};
 
 use super::VaultSettings;
 
@@ -17,53 +16,123 @@ pub struct DatabaseFormat {
     pub settings: VaultSettings,
 }
 
-pub struct Database {
-    file: Option<fs::File>,
+impl DatabaseFormat {
+    pub fn empty() -> Self {
+        Self {
+            entries: Vec::new(),
+            settings: VaultSettings {},
+        }
+    }
 }
+
+pub struct Database {}
 
 impl Database {
     pub fn new() -> Self {
-        Self { file: None }
+        Self {}
     }
 
-    pub fn open(&mut self) -> Result<(), Error> {
-        if let None = self.file {
-            let file = fs::OpenOptions::new()
-                .read(true)
-                .write(true)
-                .create(true)
-                .open(DB_PATH)?;
+    // Выгрузить из файла
+    pub fn unload(&self) -> Result<DatabaseFormat, DatabaseError> {
+        let file = match fs::OpenOptions::new().read(true).open(DB_PATH) {
+            Err(e) => match e.kind() {
+                io::ErrorKind::NotFound => Err(DatabaseError::FileNotFound()),
+                _ => Err(DatabaseError::Any(e.to_string())),
+            },
+            Ok(file) => Ok(file),
+        }?;
 
-            self.file = Some(file);
-
-            return Ok(());
-        }
-
-        return Err(Error::DatabaseError("Already opened".to_string()));
-    }
-
-    pub fn close(&mut self) {
-        self.file = None;
-    }
-
-    pub fn unload(&mut self) -> Result<DatabaseFormat, Error> {
-        if let None = self.file {
-            self.open()?;
-        }
-
-        let mut reader = io::BufReader::new(self.file.as_ref().unwrap());
+        let mut reader = io::BufReader::new(file);
         let mut buff = String::new();
 
-        if let Err(e) = reader.read_to_string(&mut buff) {
-            println!("{}", e);
-        }
+        match reader.read_to_string(&mut buff) {
+            Err(e) => match e.kind() {
+                _ => Err(DatabaseError::Any(e.to_string())),
+            },
+            Ok(_) => Ok(()),
+        }?;
 
-        let data = serde_json::from_str::<DatabaseFormat>(&buff)?;
+        let data = match serde_json::from_str::<DatabaseFormat>(&buff) {
+            Err(e) => match e.classify() {
+                serde_json::error::Category::Syntax | serde_json::error::Category::Data => {
+                    Err(DatabaseError::FileFormatInvalid())
+                }
+                _ => Err(DatabaseError::Any(e.to_string())),
+            },
+            Ok(data) => Ok(data),
+        }?;
 
         return Ok(data);
     }
 
-    pub fn generate_id() -> String {
-        return Uuid::new_v4().as_simple().to_string();
+    // Загрузить в файл
+    pub fn load(&self, data: &DatabaseFormat) -> Result<(), DatabaseError> {
+        let file = match fs::OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .create(true)
+            .open(DB_PATH)
+        {
+            Err(e) => match e.kind() {
+                _ => Err(DatabaseError::Any(e.to_string())),
+            },
+            Ok(file) => Ok(file),
+        }?;
+
+        let data_string = match serde_json::to_string_pretty(data) {
+            Err(e) => match e.classify() {
+                serde_json::error::Category::Syntax | serde_json::error::Category::Data => {
+                    Err(DatabaseError::FileFormatInvalid())
+                }
+                _ => Err(DatabaseError::Any(e.to_string())),
+            },
+            Ok(string) => Ok(string),
+        }?;
+
+        let mut writer = io::BufWriter::new(file);
+        match writer.write_all(data_string.as_bytes()) {
+            Err(e) => match e.kind() {
+                _ => Err(DatabaseError::Any(e.to_string())),
+            },
+            Ok(()) => Ok(()),
+        }?;
+
+        return Ok(());
+    }
+
+    pub fn init_file(&self) -> Result<DatabaseFormat, DatabaseError> {
+        let file = match fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(DB_PATH)
+        {
+            Err(e) => match e.kind() {
+                io::ErrorKind::AlreadyExists => Err(DatabaseError::FileAlreadyExist()),
+                _ => Err(DatabaseError::Any(e.to_string())),
+            },
+            Ok(file) => Ok(file),
+        }?;
+
+        let data = DatabaseFormat::empty();
+
+        let data_string = match serde_json::to_string_pretty(&data) {
+            Err(e) => match e.classify() {
+                serde_json::error::Category::Syntax | serde_json::error::Category::Data => {
+                    Err(DatabaseError::FileFormatInvalid())
+                }
+                _ => Err(DatabaseError::Any(e.to_string())),
+            },
+            Ok(string) => Ok(string),
+        }?;
+
+        let mut writer = io::BufWriter::new(file);
+        match writer.write_all(data_string.as_bytes()) {
+            Err(e) => match e.kind() {
+                _ => Err(DatabaseError::Any(e.to_string())),
+            },
+            Ok(()) => Ok(()),
+        }?;
+
+        return Ok(data);
     }
 }

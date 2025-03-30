@@ -1,29 +1,28 @@
-use serde_json;
-use std::{fmt, io};
+use std::fmt;
 
 #[derive(Debug)]
-pub enum Error {
-    DatabaseError(String),
+pub enum DatabaseError {
+    Any(String),
+    FileNotFound(),
+    FileAlreadyExist(),
+    FileFormatInvalid(),
 }
 
-impl fmt::Display for Error {
+impl fmt::Display for DatabaseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::DatabaseError(message) => write!(f, "Database error: {}.", message),
+            DatabaseError::FileNotFound() => write!(f, "Database error: File not found."),
+            DatabaseError::FileAlreadyExist() => write!(f, "Database error: File already exist."),
+            DatabaseError::FileFormatInvalid() => write!(f, "Database error: File format invalid."),
+            DatabaseError::Any(message) => write!(f, "Database error: {}.", message),
         }
     }
 }
 
-impl From<io::Error> for Error {
-    fn from(error: io::Error) -> Self {
-        Error::DatabaseError(error.to_string())
-    }
-}
+// impl From<io::Error> for Error {
+//     fn from(error: io::Error) -> Self {
+//         Error::DatabaseError(error.to_string())
+//     }
+// }
 
-impl From<serde_json::Error> for Error {
-    fn from(error: serde_json::Error) -> Self {
-        Error::DatabaseError(error.to_string())
-    }
-}
-
-impl std::error::Error for Error {}
+impl std::error::Error for DatabaseError {}
