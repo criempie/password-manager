@@ -8,6 +8,12 @@ pub enum DatabaseError {
     FileFormatInvalid(),
 }
 
+#[derive(Debug)]
+pub enum VaultError {
+    Any(String),
+    EntryNotFound,
+}
+
 impl fmt::Display for DatabaseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -19,6 +25,15 @@ impl fmt::Display for DatabaseError {
     }
 }
 
+impl fmt::Display for VaultError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            VaultError::EntryNotFound => write!(f, "Vault error: Entry not found."),
+            VaultError::Any(message) => write!(f, "Vault error: {}.", message),
+        }
+    }
+}
+
 // impl From<io::Error> for Error {
 //     fn from(error: io::Error) -> Self {
 //         Error::DatabaseError(error.to_string())
@@ -26,3 +41,4 @@ impl fmt::Display for DatabaseError {
 // }
 
 impl std::error::Error for DatabaseError {}
+impl std::error::Error for VaultError {}
