@@ -1,7 +1,7 @@
 pub mod database;
 pub mod entry;
 
-use crate::error::DatabaseError;
+use crate::error::{DatabaseError, VaultError};
 use database::{Database, DatabaseFormat};
 use entry::Entry;
 use serde::{Deserialize, Serialize};
@@ -53,6 +53,21 @@ impl Vault {
         let id = Vault::generate_id();
 
         self.entries.push(Entry::new(id, login, password));
+    }
+
+    pub fn get_entry(&self, id: &String) -> Option<Entry> {
+        return self.entries.iter().find(|&entry| entry.id == *id).cloned();
+    }
+
+    pub fn delete_entry(&mut self, id: &String) -> Result<(), VaultError> {
+        let index = self.entries.iter().position(|entry| entry.id == *id);
+
+        match index {
+            None => return Err(VaultError::EntryNotFound),
+            Some(index) => self.entries.remove(index),
+        };
+
+        return Ok(());
     }
 
     pub fn save(&mut self) -> Result<(), DatabaseError> {
