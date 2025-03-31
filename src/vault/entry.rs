@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Credentials {
-    login: String,
-    password: String,
+    pub login: String,
+    pub password: String,
 }
 
 impl Credentials {
@@ -14,8 +14,8 @@ impl Credentials {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Entry {
-    id: String,
-    credentials: Credentials,
+    pub id: String,
+    pub credentials: Credentials,
 }
 
 impl Entry {
