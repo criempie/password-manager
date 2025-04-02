@@ -1,7 +1,10 @@
 pub mod database;
 pub mod entry;
 
-use crate::error::{DatabaseError, VaultError};
+mod crypt;
+
+use crate::error::{CryptError, DatabaseError, VaultError};
+use crypt::bytes_to_base64;
 use database::{Database, DatabaseFormat};
 use entry::Entry;
 use serde::{Deserialize, Serialize};
@@ -49,10 +52,31 @@ impl Vault {
         self.settings = data.settings;
     }
 
-    pub fn create_entry(&mut self, login: String, password: String) {
+    pub fn create_entry(&mut self, login: String, password: String) -> Result<(), VaultError> {
         let id = Vault::generate_id();
 
-        self.entries.push(Entry::new(id, login, password));
+        let (key, iv) = crypt::generate_random_key_iv();
+
+        // let key: [u8; 32] = match key.try_into() {
+        //     Ok(key) => Ok(key),
+        //     Err(_) => Err(CryptError::KeyInvalidLength),
+        // }?;
+
+        // let iv: [u8; 16] = match iv.try_into() {
+        //     Ok(iv) => Ok(iv),
+        //     Err(_) => Err(CryptError::IvInvalidLength),
+        // }?;
+
+        let encrypted_password =
+            match crypt::first_stage_encrypt(password.as_bytes().to_vec(), key, iv) {
+                Ok(data) => Ok(data),
+                Err(e) => Err(VaultError::Any(e.to_string())),
+            }?;
+
+        self.entries
+            .push(Entry::new(id, login, bytes_to_base64(encrypted_password)));
+
+        return Ok(());
     }
 
     pub fn get_entry(&self, id: &String) -> Option<Entry> {
