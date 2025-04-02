@@ -55,26 +55,17 @@ impl Vault {
     pub fn create_entry(&mut self, login: String, password: String) -> Result<(), VaultError> {
         let id = Vault::generate_id();
 
-        let (key, iv) = crypt::generate_random_key_iv();
+        let pair = crypt::EncryptionPair::generate();
 
-        // let key: [u8; 32] = match key.try_into() {
-        //     Ok(key) => Ok(key),
-        //     Err(_) => Err(CryptError::KeyInvalidLength),
-        // }?;
+        let encrypted_password = pair
+            .encrypt(password.as_bytes().to_vec())
+            .map_err(|e| VaultError::Any(e.to_string()))?;
 
-        // let iv: [u8; 16] = match iv.try_into() {
-        //     Ok(iv) => Ok(iv),
-        //     Err(_) => Err(CryptError::IvInvalidLength),
-        // }?;
+        let encoded_enc_password = bytes_to_base64(&encrypted_password);
 
-        let encrypted_password =
-            match crypt::first_stage_encrypt(password.as_bytes().to_vec(), key, iv) {
-                Ok(data) => Ok(data),
-                Err(e) => Err(VaultError::Any(e.to_string())),
-            }?;
+        let entry = Entry::new(id, login, encoded_enc_password);
 
-        self.entries
-            .push(Entry::new(id, login, bytes_to_base64(encrypted_password)));
+        self.entries.push(entry);
 
         return Ok(());
     }

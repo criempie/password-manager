@@ -19,6 +19,8 @@ pub enum CryptError {
     Any(String),
     KeyInvalidLength,
     IvInvalidLength,
+    FoldInvalidLength,
+    Base64DecodeError(String),
 }
 
 impl fmt::Display for DatabaseError {
@@ -47,6 +49,12 @@ impl fmt::Display for CryptError {
             CryptError::Any(message) => write!(f, "Crypt error: {}.", message),
             CryptError::IvInvalidLength => write!(f, "Crypt error: iv invalid length."),
             CryptError::KeyInvalidLength => write!(f, "Crypt error: key invalid length."),
+            CryptError::Base64DecodeError(message) => {
+                write!(f, "Crypt error: base64 decode failed: {}.", message)
+            }
+            CryptError::FoldInvalidLength => {
+                write!(f, "Crypt error: fold of key and iv has invalid length.")
+            }
         }
     }
 }
