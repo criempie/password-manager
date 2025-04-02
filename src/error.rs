@@ -14,6 +14,13 @@ pub enum VaultError {
     EntryNotFound,
 }
 
+#[derive(Debug)]
+pub enum CryptError {
+    Any(String),
+    KeyInvalidLength,
+    IvInvalidLength,
+}
+
 impl fmt::Display for DatabaseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -34,6 +41,16 @@ impl fmt::Display for VaultError {
     }
 }
 
+impl fmt::Display for CryptError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            CryptError::Any(message) => write!(f, "Crypt error: {}.", message),
+            CryptError::IvInvalidLength => write!(f, "Crypt error: iv invalid length."),
+            CryptError::KeyInvalidLength => write!(f, "Crypt error: key invalid length."),
+        }
+    }
+}
+
 // impl From<io::Error> for Error {
 //     fn from(error: io::Error) -> Self {
 //         Error::DatabaseError(error.to_string())
@@ -42,3 +59,4 @@ impl fmt::Display for VaultError {
 
 impl std::error::Error for DatabaseError {}
 impl std::error::Error for VaultError {}
+impl std::error::Error for CryptError {}
