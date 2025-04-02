@@ -1,79 +1,88 @@
-use std::io::{self, stdin, stdout, Write};
-
-use crate::vault::{entries::ClassicEntry, Vault};
+use crate::vault::Vault;
+use std::io::{stdin, stdout, Write};
 
 enum Command {
-    ShowAllEntries,
-    AddNewEntry,
+    GetEntryById(String),
 }
 
-pub struct CLI {
+pub struct CLIManager {
     vault: Vault,
-    master_key: Option<String>,
 }
 
-impl CLI {
-    pub fn new(vault: Vault) -> CLI {
-        return CLI {
-            vault,
-            master_key: None,
-        };
+impl CLIManager {
+    pub fn new(vault: Vault) -> Self {
+        Self { vault }
     }
 
-    pub fn start(&mut self) {
-        self.vault.unlock();
-
-        match self.prompt_action() {
+    pub fn start(&self) {
+        match self.prompt_navigation() {
+            Err(e) => {
+                println!("{}", e.to_string());
+                self.start();
+            }
             Ok(command) => match command {
-                Command::ShowAllEntries => {
-                    println!("{:?}", self.vault.entries_get());
-                }
-                Command::AddNewEntry => {
-                    let entry = self.prompt_new_entry().unwrap();
-
-                    println!("Created new entry: {:?}", &entry);
+                Command::GetEntryById(id) => {
+                    println!("{:?}", self.vault.get_entry(&id));
                 }
             },
-            Err(err) => panic!("{}", err),
         }
     }
 
-    fn prompt_action(&mut self) -> Result<Command, io::Error> {
-        let mut buffer = String::new();
-
-        stdout().flush()?;
+    fn prompt_navigation(&self) -> Result<Command, Error> {
+        stdout().flush().map_err(|e| Error::IO(e.to_string()))?;
 
         println!("Select action:");
-        println!("1. Show all entries");
-        println!("2. Create new entry");
-        stdin().read_line(&mut buffer)?;
+        println!("1. Get entry by id.");
+
+        let mut buffer = String::new();
+
+        stdin()
+            .read_line(&mut buffer)
+            .map_err(|e| Error::IO(e.to_string()))?;
 
         let input = buffer.trim();
 
-        if input == "1" {
-            return Ok(Command::ShowAllEntries);
-        } else if input == "2" {
-            return Ok(Command::AddNewEntry);
-        }
+        match input {
+            "1" => {
+                let id = self.prompt_entry_id()?;
 
-        return self.prompt_action();
+                return Ok(Command::GetEntryById(id));
+            }
+            _ => Err(Error::InvalidCommand),
+        }
     }
 
-    // TODO: Return reference to entry after vault.entry_create todo is done.
-    fn prompt_new_entry(&mut self) -> Result<ClassicEntry, io::Error> {
-        let mut login_buf = String::new();
-        let mut password_buf = String::new();
+    fn prompt_entry_id(&self) -> Result<String, Error> {
+        print!("ID: ");
+        stdout().flush().map_err(|e| Error::IO(e.to_string()))?;
 
-        print!("Enter login: ");
-        stdout().flush()?;
-        stdin().read_line(&mut login_buf)?;
+        let mut buffer = String::new();
 
-        print!("Enter password: ");
-        stdout().flush()?;
-        stdin().read_line(&mut password_buf)?;
+        stdin()
+            .read_line(&mut buffer)
+            .map_err(|e| Error::IO(e.to_string()))?;
 
-        return Ok(self
-            .vault
-            .entry_create(login_buf.trim(), password_buf.trim()));
+        println!();
+
+        let input = buffer.trim();
+
+        return Ok(input.to_string());
     }
 }
+
+#[derive(Debug)]
+pub enum Error {
+    InvalidCommand,
+    IO(String),
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::InvalidCommand => write!(f, "CLI error: Invalid command."),
+            Self::IO(message) => write!(f, "CLI IO error: {}", message),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
