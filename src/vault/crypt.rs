@@ -40,8 +40,8 @@ impl EncryptionPair {
         return EncryptionPairFold::new(encoded);
     }
 
-    pub fn encrypt(&self, data: Vec<u8>) -> Result<Vec<u8>, CryptError> {
-        return encrypt_aes_cbc(data.as_slice(), &self.key, &self.iv);
+    pub fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, CryptError> {
+        return encrypt_aes_cbc(data, &self.key, &self.iv);
     }
 
     pub fn decrypt(&self, data: Vec<u8>) -> Vec<u8> {

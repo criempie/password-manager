@@ -4,23 +4,27 @@ pub mod entry;
 mod crypt;
 
 use crate::error::{CryptError, DatabaseError, VaultError};
-use crypt::bytes_to_base64;
+use crypt::{base64_to_bytes, bytes_to_base64, EncryptionPairFold};
 use database::{Database, DatabaseFormat};
-use entry::Entry;
+use entry::{Entry, EntryEncrypted};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct VaultSettings {}
+pub struct VaultSettings {
+    encryption_key: Option<String>,
+}
 
 impl VaultSettings {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            encryption_key: None,
+        }
     }
 }
 
 pub struct Vault {
-    pub entries: Vec<Entry>,
+    pub entries: Vec<EntryEncrypted>,
     pub settings: VaultSettings,
     db: Database,
 }
@@ -57,21 +61,31 @@ impl Vault {
 
         let pair = crypt::EncryptionPair::generate();
 
-        let encrypted_password = pair
-            .encrypt(password.as_bytes().to_vec())
-            .map_err(|e| VaultError::Any(e.to_string()))?;
+        let entry = Entry::new(id, login, password);
+        let entry_encrypted = entry.encrypt(pair);
 
-        let encoded_enc_password = bytes_to_base64(&encrypted_password);
-
-        let entry = Entry::new(id, login, encoded_enc_password);
-
-        self.entries.push(entry);
+        self.entries.push(entry_encrypted);
 
         return Ok(());
     }
 
-    pub fn get_entry(&self, id: &String) -> Option<Entry> {
-        return self.entries.iter().find(|&entry| entry.id == *id).cloned();
+    pub fn get_entry(&self, id: &String) -> Result<Option<Entry>, VaultError> {
+        let entry = self.entries.iter().find(|&entry| entry.id == *id).cloned();
+
+        if let None = entry {
+            return Ok(None);
+        }
+
+        let entry = entry.unwrap();
+
+        let encryption_pair = match self.settings.encryption_key.clone() {
+            None => Err(VaultError::EncryptionKeyInvalid),
+            Some(key) => {
+                EncryptionPairFold::unfold(key).map_err(|_| VaultError::EncryptionKeyInvalid)
+            }
+        }?;
+
+        return Ok(Some(entry.decrypt(encryption_pair)));
     }
 
     pub fn delete_entry(&mut self, id: &String) -> Result<(), VaultError> {

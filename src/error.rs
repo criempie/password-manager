@@ -12,6 +12,7 @@ pub enum DatabaseError {
 pub enum VaultError {
     Any(String),
     EntryNotFound,
+    EncryptionKeyInvalid,
 }
 
 #[derive(Debug)]
@@ -38,6 +39,7 @@ impl fmt::Display for VaultError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             VaultError::EntryNotFound => write!(f, "Vault error: Entry not found."),
+            VaultError::EncryptionKeyInvalid => write!(f, "Vault error: Encryption key invalid."),
             VaultError::Any(message) => write!(f, "Vault error: {}.", message),
         }
     }

@@ -4,7 +4,7 @@ use std::{
     io::{self, Read, Write},
 };
 
-use crate::{error::DatabaseError, vault::entry::Entry};
+use crate::{error::DatabaseError, vault::entry::EntryEncrypted};
 
 use super::VaultSettings;
 
@@ -12,7 +12,7 @@ const DB_PATH: &str = "./db.json";
 
 #[derive(Serialize, Deserialize)]
 pub struct DatabaseFormat {
-    pub entries: Vec<Entry>,
+    pub entries: Vec<EntryEncrypted>,
     pub settings: VaultSettings,
 }
 
@@ -20,7 +20,7 @@ impl DatabaseFormat {
     pub fn empty() -> Self {
         Self {
             entries: Vec::new(),
-            settings: VaultSettings {},
+            settings: VaultSettings::new(),
         }
     }
 }
