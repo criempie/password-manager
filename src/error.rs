@@ -1,5 +1,12 @@
 use std::fmt;
 
+use crate::vault::entry;
+
+#[derive(Debug)]
+pub enum ApplicationError {
+    EntryError(entry::Error),
+}
+
 #[derive(Debug)]
 pub enum DatabaseError {
     Any(String),

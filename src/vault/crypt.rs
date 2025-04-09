@@ -2,91 +2,123 @@ use aes::{cipher::block_padding::Pkcs7, Aes256};
 use base64::{engine::general_purpose, Engine as _};
 use cbc::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use rand::Rng;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::error::CryptError;
 
-type Base64String = String;
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Base64String(String);
 
-pub struct EncryptionPair {
-    key: [u8; 32],
-    iv: [u8; 16],
+impl Base64String {
+    pub fn encode(data: Vec<u8>) -> Self {
+        Self(Base64String::_encode(&data))
+    }
+
+    pub fn from(str: String) -> Self {
+        Self(str)
+    }
+
+    pub fn decode(&self) -> Result<Vec<u8>, base64::DecodeError> {
+        return general_purpose::STANDARD.decode(&self.0);
+    }
+
+    fn _encode(data: &[u8]) -> String {
+        return general_purpose::STANDARD.encode(data);
+    }
 }
 
-pub struct EncryptionPairFold {
-    data: Base64String,
-}
+#[derive(Copy, Clone, Debug)]
+pub struct EncryptionIV([u8; 16]);
 
-impl EncryptionPair {
-    // Сгенерировать новую пару (key, iv).
-    pub fn generate() -> Self {
-        let (key, iv) = Self::generate_random_key_iv();
-
-        return Self { key, iv };
+impl EncryptionIV {
+    pub fn generate_new() -> Self {
+        Self(EncryptionIV::generate_random_iv())
     }
 
-    pub fn new(key: [u8; 32], iv: [u8; 16]) -> Self {
-        Self { key, iv }
+    pub fn from(iv: [u8; 16]) -> Self {
+        Self(iv)
     }
 
-    // Сжать пару в один массив [u8; 48] с последующим преобразованием в base64.
-    pub fn fold(self) -> EncryptionPairFold {
-        let mut combination = [0u8; 32 + 16];
-
-        combination[0..32].copy_from_slice(&self.key);
-        combination[32..48].copy_from_slice(&self.iv);
-
-        let encoded = bytes_to_base64(&combination);
-
-        return EncryptionPairFold::new(encoded);
-    }
-
-    pub fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, CryptError> {
-        return encrypt_aes_cbc(data, &self.key, &self.iv);
-    }
-
-    pub fn decrypt(&self, data: Vec<u8>) -> Vec<u8> {
-        return decrypt_aes_cbc(data, &self.key, &self.iv);
-    }
-
-    fn generate_random_key_iv() -> ([u8; 32], [u8; 16]) {
+    fn generate_random_iv() -> [u8; 16] {
         let mut rng = rand::thread_rng();
-        let mut key = [0u8; 32];
         let mut iv = [0u8; 16];
 
-        rng.fill(&mut key);
         rng.fill(&mut iv);
 
-        return (key, iv);
+        return iv;
     }
 }
 
-impl EncryptionPairFold {
-    pub fn new(data: String) -> Self {
-        Self { data }
-    }
-
-    // Декодировать base64 в [u8; 48] и преобразовать в EncryptionPair { key, iv }.
-    pub fn unfold(collapsed: Base64String) -> Result<EncryptionPair, CryptError> {
-        let decoded =
-            base64_to_bytes(collapsed).map_err(|e| CryptError::Base64DecodeError(e.to_string()))?;
-
-        if decoded.len() != 48 {
-            return Err(CryptError::FoldInvalidLength);
-        }
-
-        let key: [u8; 32] = decoded[0..32].try_into().unwrap();
-        let iv: [u8; 16] = decoded[32..48].try_into().unwrap();
-
-        return Ok(EncryptionPair::new(key, iv));
+impl Serialize for EncryptionIV {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        return serializer.serialize_str(&Base64String::encode(self.0.to_vec()).0);
     }
 }
 
-pub fn bytes_to_base64(data: &[u8]) -> Base64String {
-    return general_purpose::STANDARD.encode(data);
+impl<'de> Deserialize<'de> for EncryptionIV {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let base64_data = String::deserialize(deserializer)?;
+        let data = Base64String::from(base64_data).decode().unwrap();
+
+        return Ok(EncryptionIV(data.try_into().unwrap()));
+    }
 }
 
-pub fn base64_to_bytes(encoded: Base64String) -> Result<Vec<u8>, base64::DecodeError> {
-    return general_purpose::STANDARD.decode(encoded);
+#[derive(Clone, Copy, Debug)]
+pub struct EncryptionKey([u8; 32]);
+
+impl EncryptionKey {
+    pub fn generate_new() -> Self {
+        Self(EncryptionKey::generate_random_key())
+    }
+
+    pub fn from(key: [u8; 32]) -> Self {
+        Self(key)
+    }
+
+    pub fn encrypt(&self, iv: &EncryptionIV, data: &[u8]) -> Result<Vec<u8>, CryptError> {
+        return encrypt_aes_cbc(&data, &self.0, &iv.0);
+    }
+
+    pub fn decrypt(&self, iv: &EncryptionIV, data: Vec<u8>) -> Vec<u8> {
+        return decrypt_aes_cbc(data, &self.0, &iv.0);
+    }
+
+    fn generate_random_key() -> [u8; 32] {
+        let mut rng = rand::thread_rng();
+        let mut key = [0u8; 32];
+
+        rng.fill(&mut key);
+
+        return key;
+    }
+}
+
+impl Serialize for EncryptionKey {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        return serializer.serialize_str(&Base64String::encode(self.0.to_vec()).0);
+    }
+}
+
+impl<'de> Deserialize<'de> for EncryptionKey {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let base64_data = String::deserialize(deserializer)?;
+        let data = Base64String::from(base64_data).decode().unwrap();
+
+        return Ok(EncryptionKey(data.try_into().unwrap()));
+    }
 }
 
 type Encryptor = cbc::Encryptor<Aes256>;
