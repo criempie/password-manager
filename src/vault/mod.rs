@@ -1,11 +1,12 @@
+pub mod base64string;
 pub mod database;
 pub mod entry;
 
 mod crypt;
 
-use crate::error::{CryptError, DatabaseError, VaultError};
-use crypt::{Base64String, EncryptionKey};
-use database::{Database, DatabaseFormat};
+use crate::error::{DatabaseError, VaultError};
+use crypt::EncryptionKey;
+use database::Database;
 use entry::{Entry, EntryEncrypted};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -96,17 +97,16 @@ impl Vault {
             None => return Err(VaultError::EntryNotFound),
             Some(index) => self.entries.remove(index),
         };
-
         return Ok(());
     }
 
     pub fn save(&mut self) -> Result<(), DatabaseError> {
-        let format = DatabaseFormat {
-            entries: self.entries.clone(),
-            settings: self.settings.clone(),
-        };
+        // let format = DatabaseFormat {
+        //     entries: self.entries.clone(),
+        //     settings: self.settings.clone(),
+        // };
 
-        self.db.load(&format)?;
+        // self.db.load(&format)?;
 
         return Ok(());
     }

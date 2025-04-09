@@ -1,49 +1,28 @@
+mod credentials;
+mod settings;
+
 use core::fmt;
 
+use credentials::{Credentials, CredentialsEncrypted};
 use serde::{Deserialize, Serialize};
+use settings::EntrySettings;
 
-use super::crypt::{Base64String, EncryptionIV, EncryptionKey};
-
-#[derive(Debug)]
-pub struct Credentials {
-    pub login: String,
-    pub password: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct CredentialsEncrypted {
-    pub login: Base64String,
-    pub password: Base64String,
-}
-
-impl Credentials {
-    pub fn new(login: String, password: String) -> Self {
-        Self { login, password }
-    }
-}
-
-impl CredentialsEncrypted {
-    pub fn new(login: Base64String, password: Base64String) -> Self {
-        Self { login, password }
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Settings {
-    iv: EncryptionIV,
-}
+use super::{
+    base64string::Base64String,
+    crypt::{EncryptionIV, EncryptionKey},
+};
 
 #[derive(Debug)]
 pub struct Entry {
     pub id: String,
-    pub settings: Settings,
+    pub settings: EntrySettings,
     pub credentials: Credentials,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct EntryEncrypted {
     pub id: String,
-    pub settings: Settings,
+    pub settings: EntrySettings,
     pub credentials: CredentialsEncrypted,
 }
 
@@ -51,7 +30,7 @@ impl Entry {
     pub fn new(id: String, login: String, password: String) -> Self {
         Self {
             id,
-            settings: Settings {
+            settings: EntrySettings {
                 iv: EncryptionIV::generate_new(),
             },
             credentials: Credentials::new(login, password),

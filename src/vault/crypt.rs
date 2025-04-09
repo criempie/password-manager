@@ -1,31 +1,11 @@
 use aes::{cipher::block_padding::Pkcs7, Aes256};
-use base64::{engine::general_purpose, Engine as _};
 use cbc::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use rand::Rng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::error::CryptError;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Base64String(String);
-
-impl Base64String {
-    pub fn encode(data: Vec<u8>) -> Self {
-        Self(Base64String::_encode(&data))
-    }
-
-    pub fn from(str: String) -> Self {
-        Self(str)
-    }
-
-    pub fn decode(&self) -> Result<Vec<u8>, base64::DecodeError> {
-        return general_purpose::STANDARD.decode(&self.0);
-    }
-
-    fn _encode(data: &[u8]) -> String {
-        return general_purpose::STANDARD.encode(data);
-    }
-}
+use super::base64string::Base64String;
 
 #[derive(Copy, Clone, Debug)]
 pub struct EncryptionIV([u8; 16]);

@@ -1,29 +1,14 @@
-use serde::{self, Deserialize, Serialize};
+mod format;
+
+use format::DatabaseFormat;
 use std::{
     fs,
     io::{self, Read, Write},
 };
 
-use crate::{error::DatabaseError, vault::entry::EntryEncrypted};
-
-use super::VaultSettings;
+use crate::error::DatabaseError;
 
 const DB_PATH: &str = "./db.json";
-
-#[derive(Serialize, Deserialize)]
-pub struct DatabaseFormat {
-    pub entries: Vec<EntryEncrypted>,
-    pub settings: VaultSettings,
-}
-
-impl DatabaseFormat {
-    pub fn empty() -> Self {
-        Self {
-            entries: Vec::new(),
-            settings: VaultSettings::new(),
-        }
-    }
-}
 
 pub struct Database {}
 
