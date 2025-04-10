@@ -1,6 +1,7 @@
 pub mod base64string;
 pub mod database;
 pub mod entry;
+mod vault_settings;
 
 mod crypt;
 
@@ -8,24 +9,8 @@ use crate::error::{DatabaseError, VaultError};
 use crypt::EncryptionKey;
 use database::Database;
 use entry::{Entry, EntryEncrypted};
-use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct VaultSettings {
-    encryption_key: Option<EncryptionKey>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct VaultSettingsForLoad {}
-
-impl VaultSettings {
-    pub fn new() -> Self {
-        Self {
-            encryption_key: Some(EncryptionKey::generate_new()),
-        }
-    }
-}
+use vault_settings::VaultSettings;
 
 pub struct Vault {
     pub entries: Vec<EntryEncrypted>,
