@@ -1,5 +1,6 @@
 pub mod base64string;
 pub mod database;
+mod encryption_manager;
 pub mod entry;
 mod vault_settings;
 
