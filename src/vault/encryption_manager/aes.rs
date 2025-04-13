@@ -2,6 +2,7 @@ use aes::{
     cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit},
     Aes256,
 };
+use rand::Rng;
 
 use super::{error, IEncryptionManager};
 
@@ -66,18 +67,34 @@ fn decrypt_aes_cbc(data: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>, error:
     return Ok(buffer);
 }
 
-#[derive(Clone)]
 pub struct EncryptionKey(KeyBytes);
-#[derive(Clone)]
 pub struct EncryptionIV(IVBytes);
 
 impl EncryptionKey {
+    pub fn random() -> Self {
+        let mut rng = rand::thread_rng();
+        let mut key = [0u8; 32];
+
+        rng.fill(&mut key);
+
+        return Self(key);
+    }
+
     pub fn bytes(&self) -> KeyBytes {
         return self.0;
     }
 }
 
 impl EncryptionIV {
+    pub fn random() -> Self {
+        let mut rng = rand::thread_rng();
+        let mut iv = [0u8; 16];
+
+        rng.fill(&mut iv);
+
+        return Self(iv);
+    }
+
     pub fn bytes(&self) -> IVBytes {
         return self.0;
     }
