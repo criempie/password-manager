@@ -1,6 +1,6 @@
 use std::{
     fs,
-    io::{self, Write},
+    io::{self, Read, Write},
     marker::PhantomData,
 };
 
@@ -41,11 +41,16 @@ impl<F: Serialize + DeserializeOwned + IDatabaseFormat> IDatabase<F> for Databas
     }
 
     fn save(&mut self, data: &F) -> Result<(), ()> {
-        todo!()
+        let data_to_write = serde_json::to_string_pretty(data).unwrap();
+
+        return DatabaseJSON::<F>::write(&self.file_path, &data_to_write);
     }
 
     fn load(&self) -> Result<F, ()> {
-        todo!()
+        let data = DatabaseJSON::<F>::read(&self.file_path).unwrap();
+        let deserialized = serde_json::from_str::<F>(&data).unwrap();
+
+        return Ok(deserialized);
     }
 }
 
@@ -61,5 +66,15 @@ impl<F: Serialize + DeserializeOwned + IDatabaseFormat> DatabaseJSON<F> {
         writer.write_all(data.as_bytes()).unwrap();
 
         return Ok(());
+    }
+
+    fn read(file_path: &String) -> Result<String, ()> {
+        let file = fs::OpenOptions::new().read(true).open(file_path).unwrap();
+        let mut buffer = String::new();
+        let mut reader = io::BufReader::new(file);
+
+        reader.read_to_string(&mut buffer).unwrap();
+
+        return Ok(buffer);
     }
 }
