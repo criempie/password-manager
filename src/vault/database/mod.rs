@@ -1,6 +1,7 @@
-mod format;
+pub mod db_json;
+pub mod format;
 
-use format::DatabaseFormat;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     fs,
     io::{self, Read, Write},
@@ -120,4 +121,12 @@ impl Database {
 
         return Ok(data);
     }
+}
+
+pub trait IDatabase<F: Serialize + DeserializeOwned> {
+    fn save(&mut self, data: &F) -> Result<(), ()>;
+    fn load(&self) -> Result<F, ()>;
+    fn init(file_path: String) -> Result<Self, ()>
+    where
+        Self: Sized;
 }

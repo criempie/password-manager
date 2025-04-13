@@ -70,7 +70,9 @@ fn decrypt_aes_cbc(data: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>, error:
     return Ok(buffer);
 }
 
+#[derive(Clone, Debug)]
 pub struct EncryptionKey(KeyBytes);
+#[derive(Clone, Debug)]
 pub struct EncryptionIV(IVBytes);
 
 impl EncryptionKey {
