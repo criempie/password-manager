@@ -4,5 +4,5 @@ use crate::vault::crypt::EncryptionIV;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct EntrySettings {
-    pub iv: EncryptionIV,
+  pub iv: EncryptionIV,
 }

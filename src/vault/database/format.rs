@@ -1,3 +1,3 @@
 pub trait IDatabaseFormat {
-    fn new() -> Self;
+  fn new() -> Self;
 }
