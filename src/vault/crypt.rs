@@ -3,8 +3,6 @@ use cbc::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use rand::Rng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::error::CryptError;
-
 use super::base64string::Base64String;
 
 #[derive(Copy, Clone, Debug)]
