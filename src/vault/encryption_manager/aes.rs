@@ -105,44 +105,44 @@ impl EncryptionIV {
   }
 }
 
-impl Serialize for EncryptionKey {
-  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-  where
-    S: Serializer,
-  {
-    return serializer.serialize_str(&Base64String::encode(self.0.to_vec()).0);
-  }
-}
+// impl Serialize for EncryptionKey {
+//   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//   where
+//     S: Serializer,
+//   {
+//     return serializer.serialize_str(&Base64String::encode(self.0).0);
+//   }
+// }
 
-impl<'de> Deserialize<'de> for EncryptionKey {
-  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-  where
-    D: Deserializer<'de>,
-  {
-    let base64_data = String::deserialize(deserializer)?;
-    let data = Base64String::from(base64_data).decode().unwrap();
+// impl<'de> Deserialize<'de> for EncryptionKey {
+//   fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+//   where
+//     D: Deserializer<'de>,
+//   {
+//     let base64_data = String::deserialize(deserializer)?;
+//     let data = Base64String::from(base64_data).decode().unwrap();
 
-    return Ok(EncryptionKey(data.try_into().unwrap()));
-  }
-}
+//     return Ok(EncryptionKey(data.try_into().unwrap()));
+//   }
+// }
 
-impl Serialize for EncryptionIV {
-  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-  where
-    S: Serializer,
-  {
-    return serializer.serialize_str(&Base64String::encode(self.0.to_vec()).0);
-  }
-}
+// impl Serialize for EncryptionIV {
+//   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//   where
+//     S: Serializer,
+//   {
+//     return serializer.serialize_str(&Base64String::encode(self.0.to_vec()).0);
+//   }
+// }
 
-impl<'de> Deserialize<'de> for EncryptionIV {
-  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-  where
-    D: Deserializer<'de>,
-  {
-    let base64_data = String::deserialize(deserializer)?;
-    let data = Base64String::from(base64_data).decode().unwrap();
+// impl<'de> Deserialize<'de> for EncryptionIV {
+//   fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+//   where
+//     D: Deserializer<'de>,
+//   {
+//     let base64_data = String::deserialize(deserializer)?;
+//     let data = Base64String::from(base64_data).decode().unwrap();
 
-    return Ok(EncryptionIV(data.try_into().unwrap()));
-  }
-}
+//     return Ok(EncryptionIV(data.try_into().unwrap()));
+//   }
+// }

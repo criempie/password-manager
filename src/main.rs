@@ -1,5 +1,6 @@
 use ui::cli::manager::Manager;
 
+pub mod random;
 mod ui;
 mod vault;
 

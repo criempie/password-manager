@@ -6,28 +6,34 @@ use std::{
 
 use serde::{de::DeserializeOwned, Serialize};
 
-use super::{error, format::IDatabaseFormat, IDatabase};
+use super::{error, IDatabase};
 
-pub struct DatabaseJSON<F: IDatabaseFormat> {
-  __marker: PhantomData<F>,
+pub struct DatabaseJSON<F: Serialize + DeserializeOwned> {
   file_path: String,
+
+  __marker: PhantomData<F>,
 }
 
-impl<TFormat: IDatabaseFormat> IDatabase for DatabaseJSON<TFormat> {
+impl<TFormat: Serialize + DeserializeOwned> IDatabase for DatabaseJSON<TFormat> {
   type DatabaseFormat = TFormat;
 
   fn new(file_path: String) -> Self {
     Self {
-      __marker: PhantomData,
       file_path,
+
+      __marker: PhantomData,
     }
   }
 
-  /*
-    Result<(), NotFound | UnhandledIO>
-  */
+  fn init(&self) -> Result<(), error::Error> {
+    if let Err(e) = self.check_db_availability() {
+      return Err(e);
+    }
+
+    return Ok(());
+  }
+
   fn check_db_availability(&self) -> Result<(), error::Error> {
-    println!("{}", &self.file_path);
     return match fs::OpenOptions::new().read(true).open(&self.file_path) {
       Err(e) => match e.kind() {
         io::ErrorKind::NotFound => Err(error::Error::DatabaseFileNotFound),
@@ -37,13 +43,9 @@ impl<TFormat: IDatabaseFormat> IDatabase for DatabaseJSON<TFormat> {
     };
   }
 
-  fn init(&self) -> Result<(), error::Error> {
-    return Ok(());
-  }
-
   fn save(&mut self, data: &TFormat) -> Result<(), error::Error> {
-    let data_to_write = serde_json::to_string_pretty(data)
-      .map_err(|_| error::Error::Unhandled(String::from("Serilization")))?;
+    let data_to_write =
+      serde_json::to_string_pretty(data).map_err(|_| error::Error::FailWhileWritingToFile)?;
 
     return DatabaseJSON::<TFormat>::write(&self.file_path, &data_to_write);
   }
@@ -57,9 +59,10 @@ impl<TFormat: IDatabaseFormat> IDatabase for DatabaseJSON<TFormat> {
   }
 }
 
-impl<F: Serialize + DeserializeOwned + IDatabaseFormat> DatabaseJSON<F> {
+impl<F: Serialize + DeserializeOwned> DatabaseJSON<F> {
   fn write(file_path: &String, data: &String) -> Result<(), error::Error> {
     let file = fs::OpenOptions::new()
+      .create(true)
       .write(true)
       .truncate(true)
       .open(file_path)

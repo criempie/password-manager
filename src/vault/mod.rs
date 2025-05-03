@@ -2,62 +2,125 @@ pub mod base64string;
 pub mod database;
 pub mod encryption_manager;
 pub mod entry;
-mod error;
+pub mod error;
 
 use std::marker::PhantomData;
 
+use base64string::Base64String;
 use database::IDatabase;
 use entry::IEntry;
+use serde::{de::DeserializeOwned, ser::SerializeStruct, Deserialize, Serialize};
 use uuid::Uuid;
+
+use crate::random;
+
+#[derive(Serialize, Deserialize)]
+pub struct VaultDatabaseFormat<TEntry> {
+  settings: VaultSettings,
+  entries: Vec<TEntry>,
+}
+
+impl<TEntry> VaultDatabaseFormat<TEntry> {
+  pub fn new(settings: VaultSettings, entries: Vec<TEntry>) -> Self {
+    Self { settings, entries }
+  }
+}
+
+#[derive(Debug)]
+pub struct VaultSettings {
+  master_password: String,
+  encryption_key: Vec<u8>,
+}
+
+impl VaultSettings {
+  pub fn new(master_password: String) -> Self {
+    let encryption_key = random::generate_random_bytes(64);
+
+    println!("{:?}", &encryption_key);
+
+    Self {
+      master_password,
+      encryption_key,
+    }
+  }
+}
+
+impl Serialize for VaultSettings {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    let mut state = serializer.serialize_struct("VaultSettings", 2)?;
+
+    state.serialize_field(
+      "encryption_key",
+      &Base64String::encode(&self.encryption_key).to_string(),
+    )?;
+
+    state.serialize_field("master_password", &self.master_password)?;
+
+    return state.end();
+  }
+}
+
+impl<'de> Deserialize<'de> for VaultSettings {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: serde::Deserializer<'de>,
+  {
+    #[derive(Deserialize)]
+    struct Helper {
+      master_password: String,
+      encryption_key: Base64String,
+    }
+
+    let helper = Helper::deserialize(deserializer)?;
+
+    let encryption_key = helper.encryption_key;
+    let encryption_key = encryption_key.decode().unwrap();
+
+    return Ok(VaultSettings {
+      master_password: helper.master_password,
+      encryption_key,
+    });
+  }
+}
 
 pub struct Vault<TDatabase, TEntry>
 where
   TDatabase: IDatabase,
-  TEntry: IEntry,
 {
-  pub database: TDatabase,
+  database: TDatabase,
 
-  __marker_1: PhantomData<TEntry>,
+  pub settings: VaultSettings,
+  entries: Vec<TEntry>,
 }
 
-pub trait IVault {
-  type VaultDatabase: IDatabase;
-  type VaultEntry: IEntry;
-
-  fn new() -> Self;
-  fn init(&mut self) -> Result<(), error::Error>;
-  fn create_entry(
-    &mut self,
-    credentials: <Self::VaultEntry as IEntry>::Credentials,
-  ) -> Result<Self::VaultEntry, error::Error>;
-  fn get_entry(&mut self) -> Result<Self::VaultEntry, error::Error>;
-}
-
-impl<TDatabase, TEntry> IVault for Vault<TDatabase, TEntry>
+impl<TDatabase, TEntry> Vault<TDatabase, TEntry>
 where
-  TDatabase: IDatabase,
-  TEntry: IEntry,
+  TDatabase: IDatabase<DatabaseFormat = VaultDatabaseFormat<TEntry>>,
 {
-  type VaultDatabase = TDatabase;
-  type VaultEntry = TEntry;
-
-  fn new() -> Self {
+  fn new(db: TDatabase, settings: VaultSettings, entries: Vec<TEntry>) -> Self {
     Self {
-      database: TDatabase::new(String::from("./db.json")),
-      __marker_1: PhantomData,
+      database: db,
+      entries,
+      settings,
     }
   }
 
-  fn init(&mut self) -> Result<(), error::Error> {
-    todo!();
-  }
+  pub fn initialize(db: TDatabase) -> Result<Self, error::Error> {
+    if let Err(e) = db.init() {
+      return Err(error::Error::DatabaseInitialization(e));
+    }
 
-  fn get_entry(&mut self) -> Result<TEntry, error::Error> {
-    todo!()
-  }
+    let data = match db.load() {
+      Ok(data) => data,
+      Err(e) => {
+        return Err(error::Error::DatabaseLoad(e));
+      }
+    };
 
-  fn create_entry(&mut self, credentials: TEntry::Credentials) -> Result<TEntry, error::Error> {
-    return Ok(TEntry::new(self.get_next_id(), credentials));
+    return Ok(Self::new(db, data.settings, data.entries));
   }
 }
 
